@@ -74,19 +74,19 @@ function getIconForCategory(category: string): string {
 // Sample JSON data for demo
 const SAMPLE_VILLAGE = {
   buildings: [
-    { name: "Town Hall", level: 14, upgradeEndTime: Date.now() + 3 * 24 * 60 * 60 * 1000 },
-    { name: "Clan Castle", level: 9, upgradeEndTime: Date.now() + 2 * 24 * 60 * 60 * 1000 },
-    { name: "Army Camp", level: 11, upgradeEndTime: Date.now() + 5 * 24 * 60 * 60 * 1000 },
+    { name: "Ayuntamiento", level: 14, upgradeEndTime: Date.now() + 3 * 24 * 60 * 60 * 1000 },
+    { name: "Castillo del Clan", level: 9, upgradeEndTime: Date.now() + 2 * 24 * 60 * 60 * 1000 },
+    { name: "Campamento", level: 11, upgradeEndTime: Date.now() + 5 * 24 * 60 * 60 * 1000 },
   ],
   heroes: [
-    { name: "Barbarian King", level: 75, regenerationEndTime: Date.now() + 45 * 60 * 1000 },
-    { name: "Archer Queen", level: 70, regenerationEndTime: Date.now() + 30 * 60 * 1000 },
+    { name: "Rey Bárbaro", level: 75, regenerationEndTime: Date.now() + 45 * 60 * 1000 },
+    { name: "Reina Arquera", level: 70, regenerationEndTime: Date.now() + 30 * 60 * 1000 },
   ],
   spells: [
-    { name: "Poison Spell", level: 8, upgradeEndTime: Date.now() + 12 * 60 * 60 * 1000 },
+    { name: "Hechizo Venenoso", level: 8, upgradeEndTime: Date.now() + 12 * 60 * 60 * 1000 },
   ],
   research: [
-    { name: "Golem", level: 11, endTime: Date.now() + 14 * 24 * 60 * 60 * 1000 },
+    { name: "Gólem", level: 11, endTime: Date.now() + 14 * 24 * 60 * 60 * 1000 },
   ]
 };
 
@@ -219,13 +219,38 @@ export default function App() {
         if (remaining <= 0) {
           setPotion({ active: false, endTime: 0 });
           setPotionRemaining('');
+          
+          // Notify when potion effect ends
+          if (notificationsEnabled && Notification.permission === 'granted') {
+            new Notification('🧪 Poción finalizada', {
+              body: 'El efecto de la Poción del Constructor ha terminado.',
+              icon: '🧪',
+            });
+          }
+          
+          // Play sound when potion ends
+          try {
+            const audioCtx = new AudioContext();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = 600;
+            oscillator.type = 'sine';
+            gainNode.gain.value = 0.3;
+            oscillator.start();
+            setTimeout(() => {
+              oscillator.stop();
+              audioCtx.close();
+            }, 400);
+          } catch (e) { /* ignore audio errors */ }
         } else {
           setPotionRemaining(formatTime(remaining));
         }
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [potion]);
+  }, [potion, notificationsEnabled]);
 
   // Request notification permission
   const enableNotifications = useCallback(() => {
