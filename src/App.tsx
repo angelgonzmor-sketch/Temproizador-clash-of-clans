@@ -1,19 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-
-interface Timer {
-  id: string;
-  name: string;
-  level?: number;
-  endTime: number;
-  duration: number;
-  icon: string;
-  category: string;
-}
-
-interface Potion {
-  active: boolean;
-  endTime: number;
-}
+import { CATEGORY_META, parseVillageJson } from "./lib/villageParser";
+import { generateId } from "./lib/utils";
+import type { Potion, Timer } from "./types";
 
 function formatTime(ms: number): string {
   if (ms <= 0) return "00:00:00";
@@ -36,10 +24,6 @@ function formatTimeShort(ms: number): string {
   if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
   if (minutes > 0) return `${minutes}m ${seconds}s`;
   return `${seconds}s`;
-}
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
 function parseDuration(durationStr: string): number {
@@ -77,21 +61,28 @@ function getIconForCategory(category: string): string {
 }
 
 const SAMPLE_VILLAGE = {
-  buildings: [
-    { name: "Ayuntamiento", level: 14, upgradeEndTime: Date.now() + 3 * 24 * 60 * 60 * 1000 },
-    { name: "Castillo del Clan", level: 9, upgradeEndTime: Date.now() + 2 * 24 * 60 * 60 * 1000 },
-    { name: "Campamento", level: 11, upgradeEndTime: Date.now() + 5 * 24 * 60 * 60 * 1000 },
+  tag: "#EJEMPLO",
+  timestamp: Math.floor(Date.now() / 1000),
+  buildings2: [
+    { data: 1000036, lvl: 9, timer: 404034 },
+    { data: 1000082, lvl: 2, timer: 231217 },
   ],
+  units: [{ data: 4000065, lvl: 3, timer: 283997 }],
   heroes: [
-    { name: "Rey Bárbaro", level: 75, regenerationEndTime: Date.now() + 45 * 60 * 1000 },
-    { name: "Reina Arquera", level: 70, regenerationEndTime: Date.now() + 30 * 60 * 1000 },
+    { data: 28000000, lvl: 95, timer: 3004 },
+    { data: 28000001, lvl: 90, timer: 57027 },
+    { data: 28000002, lvl: 70, timer: 24770 },
+    { data: 28000004, lvl: 45, timer: 24641 },
+    { data: 28000006, lvl: 85, timer: 3052 },
+    { data: 28000007, lvl: 40, timer: 147055 },
   ],
-  spells: [
-    { name: "Hechizo Venenoso", level: 8, upgradeEndTime: Date.now() + 12 * 60 * 60 * 1000 },
-  ],
-  research: [
-    { name: "Gólem", level: 11, endTime: Date.now() + 14 * 24 * 60 * 60 * 1000 },
-  ],
+  helpers: [{ data: 93000000, lvl: 8, helper_cooldown: 71712 }],
+};
+
+const IMPORT_STATUS_CLASSES = {
+  success: "bg-green-900/30 border-green-500/40 text-green-300",
+  warning: "bg-amber-900/30 border-amber-500/40 text-amber-200",
+  error: "bg-red-900/30 border-red-500/40 text-red-300",
 };
 
 export default function App() {
@@ -107,6 +98,10 @@ export default function App() {
     return localStorage.getItem("clash-notifications") === "true";
   });
   const [jsonInput, setJsonInput] = useState("");
+  const [importStatus, setImportStatus] = useState<{
+    type: keyof typeof IMPORT_STATUS_CLASSES;
+    text: string;
+  } | null>(null);
   const [manualName, setManualName] = useState("");
   const [manualLevel, setManualLevel] = useState("");
   const [manualDuration, setManualDuration] = useState("");
@@ -274,106 +269,71 @@ export default function App() {
     );
   };
 
-  const parseVillageJSON = (jsonStr: string) => {
-    try {
-      const data = JSON.parse(jsonStr);
-      const newTimers: Timer[] = [];
+  const importVillageJson = () => {
+    const result = parseVillageJson(jsonInput);
 
-      if (data.buildings && Array.isArray(data.buildings)) {
-        data.buildings.forEach((b: any) => {
-          const endTime =
-            b.upgradeEndTime ||
-            b.endTime ||
-            (b.remainingSeconds
-              ? Date.now() + b.remainingSeconds * 1000
-              : b.finishDate
-                ? new Date(b.finishDate).getTime()
-                : null);
-
-          if (endTime && endTime > Date.now()) {
-            newTimers.push({
-              id: generateId(),
-              name: b.name || "Edificio",
-              level: b.level,
-              endTime,
-              duration: endTime - Date.now(),
-              icon: "🏗️",
-              category: "building",
-            });
-          }
-        });
-      }
-
-      if (data.heroes && Array.isArray(data.heroes)) {
-        data.heroes.forEach((h: any) => {
-          const endTime =
-            h.regenerationEndTime ||
-            h.endTime ||
-            (h.remainingSeconds ? Date.now() + h.remainingSeconds * 1000 : null);
-
-          if (endTime && endTime > Date.now()) {
-            newTimers.push({
-              id: generateId(),
-              name: h.name || "Héroe",
-              level: h.level,
-              endTime,
-              duration: endTime - Date.now(),
-              icon: "🦸",
-              category: "hero",
-            });
-          }
-        });
-      }
-
-      if (data.spells && Array.isArray(data.spells)) {
-        data.spells.forEach((s: any) => {
-          const endTime =
-            s.upgradeEndTime ||
-            s.endTime ||
-            (s.remainingSeconds ? Date.now() + s.remainingSeconds * 1000 : null);
-
-          if (endTime && endTime > Date.now()) {
-            newTimers.push({
-              id: generateId(),
-              name: s.name || "Hechizo",
-              level: s.level,
-              endTime,
-              duration: endTime - Date.now(),
-              icon: "🧪",
-              category: "spell",
-            });
-          }
-        });
-      }
-
-      if (data.research && Array.isArray(data.research)) {
-        data.research.forEach((r: any) => {
-          const endTime =
-            r.endTime ||
-            r.upgradeEndTime ||
-            (r.remainingSeconds ? Date.now() + r.remainingSeconds * 1000 : null);
-
-          if (endTime && endTime > Date.now()) {
-            newTimers.push({
-              id: generateId(),
-              name: r.name || "Investigación",
-              level: r.level,
-              endTime,
-              duration: endTime - Date.now(),
-              icon: "🔬",
-              category: "research",
-            });
-          }
-        });
-      }
-
-      if (newTimers.length > 0) {
-        setTimers((prev) => [...prev, ...newTimers]);
-        setJsonInput("");
-      }
-    } catch (e) {
-      alert("Error al analizar el JSON. Verifica el formato.");
+    if (result.error) {
+      setImportStatus({ type: "error", text: result.error });
+      return;
     }
+
+    if (result.timers.length === 0) {
+      if (result.source === "unknown") {
+        setImportStatus({
+          type: "warning",
+          text: "No se reconoce el formato del JSON. Se esperaban listas como buildings, buildings2, units, heroes o research.",
+        });
+      } else if (result.expired > 0) {
+        setImportStatus({
+          type: "warning",
+          text: `Se detectaron ${result.expired} mejoras, pero ya habían terminado. El JSON debe ser de una captura reciente.`,
+        });
+      } else {
+        setImportStatus({
+          type: "warning",
+          text: `El JSON es válido, pero no contiene mejoras pendientes con "timer". Se revisaron ${result.scanned} elementos.`,
+        });
+      }
+      return;
+    }
+
+    const timerKey = (timer: Timer) =>
+      `${timer.sourceId ?? timer.name}-${timer.endTime}`;
+    const existing = new Set(timers.map(timerKey));
+    const fresh = result.timers.filter((timer) => !existing.has(timerKey(timer)));
+
+    if (fresh.length === 0) {
+      setImportStatus({
+        type: "warning",
+        text: "Esas mejoras ya están en la lista de temporizadores.",
+      });
+      return;
+    }
+
+    setTimers((prev) => [...prev, ...fresh]);
+    setJsonInput("");
+
+    const counts = new Map<string, number>();
+    for (const timer of fresh) {
+      counts.set(timer.category, (counts.get(timer.category) ?? 0) + 1);
+    }
+
+    const summary = Array.from(counts)
+      .map(
+        ([category, count]) =>
+          `${count} ${CATEGORY_META[category]?.label ?? category}`,
+      )
+      .join(", ");
+    const skipped = result.timers.length - fresh.length;
+    const skippedText =
+      skipped > 0
+        ? ` (${skipped} ${skipped === 1 ? "ya estaba" : "ya estaban"} en la lista)`
+        : "";
+
+    setImportStatus({
+      type: "success",
+      text: `Se añadieron ${fresh.length} ${fresh.length === 1 ? "mejora" : "mejoras"}${summary ? `: ${summary}` : ""}.${skippedText}`,
+    });
   };
 
   const addManualTimer = () => {
@@ -452,6 +412,7 @@ export default function App() {
 
   const loadSample = () => {
     setJsonInput(JSON.stringify(SAMPLE_VILLAGE, null, 2));
+    setImportStatus(null);
   };
 
   return (
@@ -536,12 +497,12 @@ export default function App() {
             <textarea
               value={jsonInput}
               onChange={(e) => setJsonInput(e.target.value)}
-              placeholder="Pega aquí el JSON de tu aldea. Se detectan automáticamente edificios, héroes, hechizos y mejoras con tiempo restante, segundos o fecha de fin."
+              placeholder="Pega el JSON del juego (formato data/lvl/timer en segundos). También se admite el formato antiguo con nombre y fecha de fin."
               className="w-full h-32 bg-gray-900 border border-gray-600 rounded-xl p-3 text-sm text-gray-200 placeholder-gray-500 focus:border-amber-500 focus:outline-none resize-none"
             />
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => parseVillageJSON(jsonInput)}
+                onClick={importVillageJson}
                 className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-lg transition-all"
               >
                 🔍 Analizar aldea
@@ -553,12 +514,23 @@ export default function App() {
                 Cargar ejemplo
               </button>
               <button
-                onClick={() => setJsonInput("")}
+                onClick={() => {
+                  setJsonInput("");
+                  setImportStatus(null);
+                }}
                 className="bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg transition-all"
               >
                 Limpiar
               </button>
             </div>
+            {importStatus && (
+              <div
+                role="status"
+                className={`rounded-lg border p-3 text-sm ${IMPORT_STATUS_CLASSES[importStatus.type]}`}
+              >
+                {importStatus.text}
+              </div>
+            )}
           </div>
         </div>
 
@@ -770,6 +742,7 @@ function TimerCard({ timer, onRemove }: { timer: Timer; onRemove: () => void }) 
               {timer.level !== undefined && (
                 <span className="ml-2 inline-flex items-center bg-amber-500/20 text-amber-400 text-xs font-bold px-2 py-0.5 rounded-full">
                   Nv. {timer.level}
+                  {timer.nextLevel !== undefined ? ` → ${timer.nextLevel}` : ""}
                 </span>
               )}
             </h3>
