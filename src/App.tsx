@@ -450,18 +450,29 @@ export default function App() {
         {/* Potion Section */}
         <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-2xl p-5 border border-purple-500/30">
           <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
-            🧪 Poción de Constructor
+            🧪 Poción del Constructor
           </h2>
-          <p className="text-sm text-gray-300 mb-4">
-            Al activarla, todos los constructores trabajan a velocidad <span className="text-amber-400 font-bold">×10</span> durante 1 hora real (equivale a 10 horas de mejoras).
-          </p>
+          <div className="text-sm text-gray-300 mb-4 space-y-2">
+            <p>
+              La Pócima del Constructor acelera todos los trabajos de construcción a <span className="text-amber-400 font-bold">10 veces</span> el ritmo original en la aldea principal durante <span className="text-amber-400 font-bold">una hora</span>.
+            </p>
+            <p className="text-gray-400">
+              En comparación con el ritmo normal, el uso de la Pócima del Constructor ahorra <span className="text-green-400 font-bold">9 horas</span> de tiempo de construcción por constructor, ya que cada constructor hará <span className="text-amber-400 font-bold">10 horas de trabajo</span> en una hora.
+            </p>
+          </div>
           
           {potion.active ? (
             <div className="bg-green-900/40 rounded-xl p-4 border border-green-500/30">
-              <div className="flex items-center justify-between">
-                <span className="text-green-400 font-bold">✅ Poción activa</span>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-green-400 font-bold flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                  Poción activa
+                </span>
                 <span className="text-green-300 font-mono text-lg">{potionRemaining}</span>
               </div>
+              <p className="text-xs text-green-300/70">
+                ⚡ Todos los constructores trabajan a ×10 — Ahorrando 9h por constructor
+              </p>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row gap-3">
@@ -716,26 +727,33 @@ function TimerCard({ timer, onRemove }: { timer: Timer; onRemove: () => void }) 
         : 'bg-gray-900/50 border-gray-600/50'
     }`}>
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{timer.icon}</span>
-          <div>
-            <h3 className="font-bold text-white">
+        <div className="flex items-start gap-3 flex-1">
+          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gray-800 border border-gray-600 flex items-center justify-center">
+            <span className="text-2xl">{timer.icon}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Mejorando:</p>
+            <h3 className="font-bold text-white text-base truncate">
               {timer.name}
-              {timer.level && <span className="text-amber-400 ml-1">Nv.{timer.level}</span>}
+              {timer.level !== undefined && (
+                <span className="ml-2 inline-flex items-center bg-amber-500/20 text-amber-400 text-xs font-bold px-2 py-0.5 rounded-full">
+                  Nv. {timer.level}
+                </span>
+              )}
             </h3>
-            <p className={`text-sm font-mono ${finished ? 'text-green-400' : 'text-gray-300'}`}>
+            <p className={`text-lg font-mono font-bold mt-1 ${finished ? 'text-green-400' : 'text-gray-200'}`}>
               {finished ? '✅ ¡Completado!' : remaining}
             </p>
             {!finished && (
               <p className="text-xs text-gray-500 mt-0.5">
-                {formatTimeShort(timer.endTime - Date.now())} restante
+                ⏱ {formatTimeShort(timer.endTime - Date.now())} restante
               </p>
             )}
           </div>
         </div>
         <button
           onClick={onRemove}
-          className="text-gray-500 hover:text-red-400 transition-colors p-1"
+          className="text-gray-500 hover:text-red-400 transition-colors p-1 ml-2"
           title="Eliminar"
         >
           ✕
@@ -743,13 +761,21 @@ function TimerCard({ timer, onRemove }: { timer: Timer; onRemove: () => void }) 
       </div>
       
       {/* Progress bar */}
-      <div className="mt-3 h-2 bg-gray-700 rounded-full overflow-hidden">
+      <div className="mt-3 h-2.5 bg-gray-700 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-1000 ${
-            finished ? 'bg-green-500' : 'bg-amber-500'
+            finished ? 'bg-green-500' : 'bg-gradient-to-r from-amber-500 to-amber-400'
           }`}
           style={{ width: `${progress}%` }}
         />
+      </div>
+      <div className="flex justify-between mt-1">
+        <span className="text-[10px] text-gray-500">{Math.round(progress)}%</span>
+        {!finished && (
+          <span className="text-[10px] text-gray-500">
+            Finaliza: {new Date(timer.endTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+          </span>
+        )}
       </div>
     </div>
   );
